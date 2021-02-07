@@ -1,19 +1,17 @@
 package de.thm.tlf.photoViewer;
 
 import javafx.application.Application;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.stage.Stage;
-
-import java.io.*;
 
 /**
  * Controller Class for Image-viewer.
@@ -23,11 +21,7 @@ import java.io.*;
  */
 public class Controller extends Application {
 
-    private PicturePreview[] previews = new PicturePreview[]{
-            new PicturePreview("pic/image1.jpg"),
-            new PicturePreview("pic/image2.jpg"),
-            new PicturePreview("pic/image3.jpg")
-    };
+    private PictureHandler picHandler = new PictureHandler();
 
     public static void main(String[] args) {
         launch(args);
@@ -37,15 +31,54 @@ public class Controller extends Application {
     public void start(Stage primaryStage) {
         /* ##############################
          * ####      MAIN PANE       ####
-         * ##############################
-         */
+         * #############################*/
         BorderPane mainPane = new BorderPane();
         // #### END MAIN PANE ####
 
+
+        /* ##############################
+         * ####     BOTTOM PANEL     ####
+         * #############################*/
+        BorderPane bottom = new BorderPane();
+        bottom.setPadding(new Insets(5,5,5,5));
+
+        // ZoomSlider -> Bottom Left
+        HBox bottomLeft = new HBox();
+        Slider zoomSlider = new Slider(0, 100, 15);
+        zoomSlider.setShowTickMarks(true);
+        // Open Button
+        Button openFilesButton = new Button("Open Pictures");
+
+        bottomLeft.getChildren().addAll(openFilesButton, zoomSlider);
+        bottom.setLeft(bottomLeft);
+
+        HBox bottomMid = new HBox();
+        bottomMid.setAlignment(Pos.CENTER);
+        bottomMid.setSpacing(5);
+        Button prevPicBtn = new Button("<-");
+        Button nextPicBtn = new Button("->");
+        Button diashowBtn = new Button("Diashow");
+        bottomMid.getChildren().addAll(prevPicBtn, diashowBtn, nextPicBtn);
+        bottom.setCenter(bottomMid);
+
+        HBox bottomRight = new HBox();
+        Button fullScreenBtn = new Button("Fullscreen");
+        bottomRight.getChildren().add(fullScreenBtn);
+        bottom.setRight(bottomRight);
+
+        //Button Actions
+        prevPicBtn.setOnAction(new EventHandler<ActionEvent>() {
+            @Override public void handle(ActionEvent e) {
+                picHandler.nextPicture();
+            }
+        });
+        mainPane.setBottom(bottom);
+        // #### END BOTTOM PANEL ####
+
+
         /* ##############################
          * ####      TOP PANEL       ####
-         * ##############################
-         */
+         * #############################*/
         VBox menu = new VBox();
         // File Menu
         Menu fileMenu = new Menu("File");
@@ -63,38 +96,13 @@ public class Controller extends Application {
         menuBar.getMenus().addAll(fileMenu, aboutMenu);
         // Adding Menus to Top Panel
         menu.getChildren().addAll(menuBar);
-        // Adding Top Panel to Main Pane
         mainPane.setTop(menu);
         // #### END TOP PANEL ####
 
-        /* ##############################
-         * ####      LEFT PANEL      ####
-         * ##############################
-         */
-        VBox selectionPane = new VBox();
-        selectionPane.setPadding(new Insets(5,5,5,5));
-        selectionPane.setSpacing(5);
-
-        // Add all previews  to the
-        for(PicturePreview pp: previews){
-            ImageView iv = new ImageView(pp.getImage());
-            iv.setFitWidth(150);
-            iv.setSmooth(true);
-            iv.setPreserveRatio(true);
-            selectionPane.getChildren().add(iv);
-        }
-
-        ScrollPane pictureSelector = new ScrollPane();
-        pictureSelector.setContent(selectionPane);
-
-        mainPane.setLeft(pictureSelector);
-
-        // #### END LEFT PANEL ####
 
         /* ##############################
          * ####     CENTER PANEL     ####
-         * ##############################
-         */
+         * #############################*/
         Picture testPic = new Picture("pic/image3.jpg");
         ScrollPane currentViewSP = new ScrollPane();
         Image image = testPic.getImage();
@@ -112,38 +120,31 @@ public class Controller extends Application {
 
 
         /* ##############################
-         * ####     BOTTOM PANEL     ####
-         * ##############################
-         */
-        BorderPane bottom = new BorderPane();
-        bottom.setPadding(new Insets(5,5,5,5));
+         * ####      LEFT PANEL      ####
+         * #############################*/
+        VBox leftPane = new VBox();
+        VBox selectionPane = new VBox();
+        selectionPane.setPadding(new Insets(5,5,5,5));
+        selectionPane.setSpacing(5);
 
-        HBox bottomLeft = new HBox();
-        Slider zoomSlider = new Slider(0, 100, 15);
-        zoomSlider.setShowTickMarks(true);
-        bottomLeft.getChildren().add(zoomSlider);
-        bottom.setLeft(bottomLeft);
+        // Add all previews  to the
+        for(PicturePreview pp: picHandler.getPreviews()){
+            ImageView iv = new ImageView(pp.getImage());
+            iv.setFitWidth(150);
+            iv.setSmooth(true);
+            iv.setPreserveRatio(true);
+            selectionPane.getChildren().add(iv);
+        }
+        ScrollPane pictureSelector = new ScrollPane();
+        pictureSelector.setContent(selectionPane);
 
-        HBox bottomMid = new HBox();
-        bottomMid.setAlignment(Pos.CENTER);
-        bottomMid.setSpacing(5);
-        Button prevPicBtn = new Button("<-");
-        Button nextPicBtn = new Button("->");
-        Button diashowBtn = new Button("Diashow");
-        bottomMid.getChildren().addAll(prevPicBtn, diashowBtn, nextPicBtn);
-        bottom.setCenter(bottomMid);
-
-        HBox bottomRight = new HBox();
-        Button fullScreenBtn = new Button("Fullscreen");
-        bottomRight.getChildren().add(fullScreenBtn);
-        bottom.setRight(bottomRight);
-
-        mainPane.setBottom(bottom);
-
-        // #### END BOTTOM PANEL ####
+        leftPane.getChildren().addAll(pictureSelector);
+        mainPane.setLeft(leftPane);
+        // #### END LEFT PANEL ####
 
         primaryStage.setTitle("Photo Viewer");
         primaryStage.setScene(new Scene(mainPane, 1200, 600));
         primaryStage.show();
     }
+
 }
