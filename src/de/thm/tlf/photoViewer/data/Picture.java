@@ -1,4 +1,4 @@
-package de.thm.tlf.photoViewer;
+package de.thm.tlf.photoViewer.data;
 
 import javafx.scene.image.Image;
 

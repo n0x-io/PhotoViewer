@@ -1,6 +1,4 @@
-package de.thm.tlf.photoViewer;
-
-import java.io.FileInputStream;
+package de.thm.tlf.photoViewer.data;
 
 public class PicturePreview extends Picture{
 
