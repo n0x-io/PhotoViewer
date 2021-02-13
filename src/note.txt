@@ -1,8 +1,0 @@
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("File not found");
-        alert.setContentText("File could not be located");
-        alert.showAndWait().ifPresent(rs -> {
-            if (rs == ButtonType.OK) {
-                System.out.println("Pressed OK.");
-            }
-        });
