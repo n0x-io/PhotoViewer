@@ -2,10 +2,12 @@ package de.thm.tlf.photoViewer;
 
 import de.thm.tlf.photoViewer.data.PicturePreview;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 //import javafx.beans.value.ChangeListener;
-///import javafx.beans.value.ObservableValue;
+//import javafx.beans.value.ObservableValue;
+import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
@@ -23,14 +25,13 @@ import java.util.List;
 
 /**
  * Controller Class for Image-viewer.
- * Holds GUI elements
+ * Holds GUI elements as well as the handling of any user input.
  *
  * @author Tim Lukas Förster
  * @version 0.1
  */
-
 public class Controller extends Application {
-
+    //------ Attributes ------//
     // CENTER //
     private final DoubleProperty zoomProperty = new SimpleDoubleProperty(200);
     private final ScrollPane currentViewSP = new ScrollPane();
@@ -57,8 +58,8 @@ public class Controller extends Application {
     private final HBox bottomMid = new HBox();
     private final HBox bottomRight = new HBox();
 
-    private Slider zoomSlider;
     private final Button openFilesButton = new Button("Open Pictures");
+    private Slider zoomSlider;
 
     private final Button prevPicBtn = new Button("<-");
     private final Button nextPicBtn = new Button("->");
@@ -69,14 +70,19 @@ public class Controller extends Application {
     // Picture handling //
     private PictureHandler picHandler;
 
+    // Etc. //
+    private boolean bIsFullScreen = false;
+    private boolean bSlideShowActive = false;
+    //------ End Attributes ------//
 
+    //------ Methods ------//
     public static void main(String[] args) {
         launch(args);
     }
 
     @Override
     public void start(Stage primaryStage) {
-        picHandler = new PictureHandler();
+        picHandler = PictureHandler.getInstance();
 
         BorderPane root = new BorderPane();
         root.setLeft(createLeft());
@@ -85,31 +91,33 @@ public class Controller extends Application {
         root.setBottom(createBottom());
         Scene mainScene = new Scene(root, 1200, 800);
 
-        //// Keypress Actions ////
+        // Keypress Actions //
         mainScene.setOnKeyPressed(event -> {
             switch (event.getCode()) {
                 case RIGHT:
                     try{
                         centerImageView.setImage(picHandler.getPrevPicture().getImage());
                     }
-                    catch (NoPicturesLoadedException npl){ npl.printStackTrace();}
+                    catch (NoPicturesLoadedException npl) { showNoPicturesLoadedWarning(); }
                     break;
                 case LEFT:
                     try{
                         centerImageView.setImage(picHandler.getNextPicture().getImage());
                     }
-                    catch (NoPicturesLoadedException npl){ npl.printStackTrace();}
+                    catch (NoPicturesLoadedException npl) { showNoPicturesLoadedWarning(); }
                     break;
             }
         });
-        //// End Keypress Actions ////
+        // End Keypress Actions //
 
-        //// Center Zoom Action ////
+        // Center Zoom Action //
         zoomProperty.addListener(observable -> {
             centerImageView.setFitWidth(zoomProperty.get());
             centerImageView.setFitHeight(zoomProperty.get());
-            //centerImageView.setFitWidth(zoomProperty.get() * 4);
-            //centerImageView.setFitHeight(zoomProperty.get() * 3);
+            /* Previously used values
+            centerImageView.setFitWidth(zoomProperty.get() * 4);
+            centerImageView.setFitHeight(zoomProperty.get() * 3);
+             */
         });
 
         zoomSlider.valueProperty().addListener((observableValue, oldVal, newVal) -> {
@@ -131,38 +139,81 @@ public class Controller extends Application {
             }
         });
         /**/
-        //// End Center Zoom Action ////
+        // End Center Zoom Action //
 
-        //// Menu Actions ////
+        // Menu Actions //
         openFiles.setOnAction(openFileDialog(primaryStage));
-        //// End Menu Actions ////
+        exitViewer.setOnAction( e -> Platform.exit());
+        // End Menu Actions //
 
 
-        //// Button Actions ////
+        // Button Actions //
         openFilesButton.setOnAction(openFileDialog(primaryStage));
 
         prevPicBtn.setOnAction(e -> {
             try{
                 centerImageView.setImage(picHandler.getPrevPicture().getImage());
             }
-            catch (NoPicturesLoadedException npl){ npl.printStackTrace();}
+            catch (NoPicturesLoadedException npl){ showNoPicturesLoadedWarning();}
         });
 
         nextPicBtn.setOnAction(e -> {
             try{
                 centerImageView.setImage(picHandler.getNextPicture().getImage());
             }
-            catch (NoPicturesLoadedException npl){ npl.printStackTrace();}
+            catch (NoPicturesLoadedException npl){ showNoPicturesLoadedWarning();}
         });
 
-        fullScreenBtn.setOnAction(e -> primaryStage.setFullScreen(true));
-        //// End Button Actions ////
+        fullScreenBtn.setOnAction(e -> {
+            primaryStage.setFullScreen(!bIsFullScreen);
+            bIsFullScreen ^= true;
+        });
+
+        slideShowBtn.setOnAction(new EventHandler<>() {
+            Thread th;
+
+            @Override
+            public void handle(ActionEvent actionEvent) {
+                try {
+                    // This statement is to catch any errors regarding no images loaded
+                    centerImageView.setImage(picHandler.getNextPicture().getImage());
+
+                    if (!bSlideShowActive) {
+                        bSlideShowActive = true;
+                        slideShowBtn.setText("Stop Slide Show");
+                        th = new Thread(slideShowTask);
+                        th.start();
+                    } else {
+                        bSlideShowActive = false;
+                        slideShowBtn.setText("Slide Show");
+                        th.interrupt();
+                    }
+                } catch (NoPicturesLoadedException npl){
+                    showNoPicturesLoadedWarning();
+                }
+            }
+        });
+        // End Button Actions //
 
         primaryStage.setTitle("Photo Viewer");
         primaryStage.setScene(mainScene);
         primaryStage.show();
     }
 
+    @SuppressWarnings("rawtypes")
+    Task slideShowTask = new Task<Void>(){
+        @Override
+        @SuppressWarnings("BusyWait")
+        protected Void call() throws Exception {
+            while(bSlideShowActive) {
+                Thread.sleep(3000);
+                centerImageView.setImage(picHandler.getNextPicture().getImage());
+            }
+            return null;
+        }
+    };
+
+    //------ Helper-Methods ------//
     /**
      * Open file-dialog allowing to select multiple pictures (via filter),
      * adds them to the PictureHandler and updates the picture preview
@@ -182,13 +233,13 @@ public class Controller extends Application {
                     Controller.this.updatePreviewView();
                     centerImageView.setImage(picHandler.getNextPicture().getImage());
                 }
-                catch (NoPicturesLoadedException npl){ npl.printStackTrace();}
+                catch (NoPicturesLoadedException npl){ showNoPicturesLoadedWarning();}
             }
         };
     }
 
     /**
-     *
+     * Method that updates the preview Pane with all PreviewPictures provided by the Picture Handler
      */
     private void updatePreviewView(){
         for(PicturePreview pp: picHandler.getPreviews()){
@@ -265,4 +316,19 @@ public class Controller extends Application {
         bottomPanel.setRight(bottomRight);
         return (bottomPanel);
     }
+
+    /**
+     * Displays a warning dialogue informing the user that no pictures has been loaded yet
+     * and the executed action is not possible.
+     */
+    private void showNoPicturesLoadedWarning(){
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle("No pictures loaded");
+        alert.setContentText("No pictures have been loaded" +
+                "\nPlease select pictures via the menu or via the open button to view them.");
+        alert.showAndWait().ifPresent(rs -> {
+        });
+    }
+    //------ End Helper-Methods ------//
+    //------ End Methods ------//
 }

@@ -6,6 +6,9 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 
+/**
+ * Data Class that is used for Image-Handling and -storing
+ */
 public class Picture {
     private Image image;
 

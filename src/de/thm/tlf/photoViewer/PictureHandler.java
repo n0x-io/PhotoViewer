@@ -6,13 +6,30 @@ import de.thm.tlf.photoViewer.data.PicturePreview;
 import java.io.File;
 import java.util.*;
 
-public class PictureHandler {
-
-    private ArrayList<Picture> pictures = new ArrayList<>();
-    private ArrayList<PicturePreview> previews = new ArrayList<>();
+/**
+ * Class for handling interaction with Images
+ * Uses custom Image-wrappers "Picture" and "PicturePreview"
+ * Implemented using singleton pattern to avoid multiple instances
+ */
+public final class PictureHandler {
+    //------ Attributes ------//
+    private final ArrayList<Picture> pictures = new ArrayList<>();
+    private final ArrayList<PicturePreview> previews = new ArrayList<>();
 
     private int currentPictureID = -1;
 
+    private static final PictureHandler INSTANCE = new PictureHandler();
+    //------ End Attributes ------//
+
+
+    //------ Constructors ------//
+    private PictureHandler() {}
+
+    public static PictureHandler getInstance() {return INSTANCE;}
+    //------ End Constructors ------//
+
+
+    //------ Methods ------//
     public ArrayList<PicturePreview> getPreviews(){
         return previews;
     }
@@ -40,9 +57,9 @@ public class PictureHandler {
         }
         else {
             currentPictureID = (currentPictureID + pictures.size() - 1) % pictures.size();
-
             return pictures.get(currentPictureID);
         }
     }
+    //------ End Methods ------//
 }
 
