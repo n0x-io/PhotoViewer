@@ -304,6 +304,7 @@ public class Controller extends Application {
         for(PicturePreview pp: picHandler.getPreviews()){
             ImageView iv = new ImageView(pp.getImage());
             iv.setFitWidth(150);
+            iv.setFitHeight(150);
             iv.setSmooth(true);
             iv.setPreserveRatio(true);
             selectionPane.getChildren().add(iv);
