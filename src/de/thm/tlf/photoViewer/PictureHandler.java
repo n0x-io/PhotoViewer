@@ -12,35 +12,60 @@ import java.util.*;
  * Implemented using singleton pattern to avoid multiple instances
  */
 public final class PictureHandler {
+    ////////////////////////////
     //------ Attributes ------//
+    ////////////////////////////
     private final ArrayList<Picture> pictures = new ArrayList<>();
     private final ArrayList<PicturePreview> previews = new ArrayList<>();
 
     private int currentPictureID = -1;
 
     private static final PictureHandler INSTANCE = new PictureHandler();
-    //------ End Attributes ------//
 
-
+    //////////////////////////////
     //------ Constructors ------//
+    //////////////////////////////
+
+    /**
+     * Prevent creation of new instances
+     */
     private PictureHandler() {}
 
+    /**
+     * Singleton-Pattern method to acquire the only instance
+     * @return PictureHandler instance
+     */
     public static PictureHandler getInstance() {return INSTANCE;}
-    //------ End Constructors ------//
 
-
+    /////////////////////////
     //------ Methods ------//
+    /////////////////////////
+
+    /**
+     * @return Arraylist of the PicturePreview
+     */
     public ArrayList<PicturePreview> getPreviews(){
         return previews;
     }
 
+    /**
+     * Method to load a list of Files into Picture objects and store them locally
+     * @param pictureFiles List of files that will be converted to Pictures
+     */
     public void loadPictures(List<File> pictureFiles){
+        pictures.clear();
+        previews.clear();
         for(File picFile : pictureFiles){
             pictures.add(new Picture(picFile.getPath()));
             previews.add(new PicturePreview(picFile.getPath()));
         }
     }
 
+    /**
+     * Determines the next picture that should be displayed
+     * @return Picture object that should be displayed next from the ArrayList pictures
+     * @throws NoPicturesLoadedException Exception for when no pictures are loaded yet but tried to access them
+     */
     public Picture getNextPicture() throws NoPicturesLoadedException {
         if(pictures.size() <= 0){
             throw new NoPicturesLoadedException("No pictures have been loaded");
@@ -51,6 +76,11 @@ public final class PictureHandler {
         }
     }
 
+    /**
+     * Determines the previous picture that should be displayed
+     * @return Picture object that should be displayed next from the ArrayList pictures
+     * @throws NoPicturesLoadedException Exception for when no pictures are loaded yet but tried to access them
+     */
     public Picture getPrevPicture() throws NoPicturesLoadedException{
         if(pictures.size() <= 0){
             throw new NoPicturesLoadedException("No pictures have been loaded");
