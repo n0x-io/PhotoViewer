@@ -355,6 +355,7 @@ public class PVController extends Application {
         for(PicturePreview pp: picHandler.getPreviews()){
             ImageView iv = new ImageView(pp.getImage());
             iv.setFitWidth(150);
+            iv.setFitHeight(150);
             iv.setSmooth(true);
             iv.setPreserveRatio(true);
             previewPane.getItems().add(iv);
