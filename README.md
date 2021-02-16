@@ -12,8 +12,9 @@ To use JavaFX 15 with Intelij IDEA it is required to add the following settings 
 
 ## Requirenments:
 [Java 15](https://jdk.java.net/15/)
+
 [JavaFX 15](https://gluonhq.com/products/javafx/)
 
 ## Tested on
-Arch Linux x64 w/ openjfx-15, openjdk-15
+Arch Linux x64 w/ openjfx-15, openjdk-15  
 Windows 10 x64 w/ openjfx-15, openjdk-15
