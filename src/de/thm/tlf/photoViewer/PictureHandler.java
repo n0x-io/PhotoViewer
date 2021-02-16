@@ -69,7 +69,7 @@ public final class PictureHandler {
      */
     public Picture getNextPicture() throws NoPicturesLoadedException {
         if(pictures.size() <= 0){
-            throw new NoPicturesLoadedException("No pictures have been loaded");
+            throw new NoPicturesLoadedException();
         }
         else {
             currentPictureID = (currentPictureID + 1) % pictures.size();
@@ -85,7 +85,7 @@ public final class PictureHandler {
      */
     public Picture getPrevPicture() throws NoPicturesLoadedException{
         if(pictures.size() <= 0){
-            throw new NoPicturesLoadedException("No pictures have been loaded");
+            throw new NoPicturesLoadedException();
         }
         else {
             currentPictureID = (currentPictureID + pictures.size() - 1) % pictures.size();
@@ -101,7 +101,7 @@ public final class PictureHandler {
      */
     public Picture getPictureByID(int pictureID) throws NoPicturesLoadedException{
         if(pictures.size() <= 0){
-            throw new NoPicturesLoadedException("No pictures have been loaded");
+            throw new NoPicturesLoadedException();
         }
         else {
             return pictures.get(pictureID);

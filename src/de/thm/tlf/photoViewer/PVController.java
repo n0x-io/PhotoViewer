@@ -56,7 +56,7 @@ public class PVController extends Application {
     private final Menu fileMenu = new Menu("File");
     private final Menu aboutMenu = new Menu("About");
     private final MenuItem menuItemOpenFiles = new MenuItem("Open");
-    private final MenuItem menuItemClearViewer = new Menu("Close all");
+    private final MenuItem menuItemClearViewer = new Menu("Close all pictures");
     private final MenuItem menuItemStartSlideShow = new MenuItem("Start Slide Show");
     private final MenuItem menuItemExitViewer = new Menu("Exit");
     private final MenuItem menuItemShowInfo = new Menu("Information");
@@ -282,8 +282,6 @@ public class PVController extends Application {
             bIsFullScreen ^= true;
         });
 
-        //slideShowBtn.setOnAction(        });
-
         // Starts the slideshow on first click, stops it on the next one
         slideShowBtn.setOnAction(toggleSlidesHowEvent());
 
@@ -315,7 +313,7 @@ public class PVController extends Application {
                 bSlideShowActive = false;
                 // Change text of slideshow switches
                 slideShowBtn.setText("Slide Show");
-                menuItemStartSlideShow.setText("Slide Show");
+                menuItemStartSlideShow.setText("Start Slide Show");
                 assert slideShowThread != null;
                     slideShowThread.interrupt();
             }
@@ -380,11 +378,13 @@ public class PVController extends Application {
         ButtonType btnType = new ButtonType("Ok", ButtonBar.ButtonData.OK_DONE);
         aboutDialog.setContentText("""
                 Created by Tim Lukas Förster
-                Icons made by www.flaticon.com/authors/roundicons for www.flaticon.com""");
-
+                
+                Icons made by www.flaticon.com/authors/roundicons 
+                for www.flaticon.com""");
 
         //Adding buttons to the aboutDialog pane
         aboutDialog.getDialogPane().getButtonTypes().add(btnType);
+        aboutDialog.show();
     }
 
     /**

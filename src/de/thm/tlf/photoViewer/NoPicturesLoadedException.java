@@ -5,7 +5,7 @@ package de.thm.tlf.photoViewer;
  * but any of the actions that involve pictures are performed.
  */
 public class NoPicturesLoadedException extends Exception{
-    NoPicturesLoadedException(String s){
-        super(s);
+    NoPicturesLoadedException(){
+        super("No pictures have been loaded");
     }
 }
