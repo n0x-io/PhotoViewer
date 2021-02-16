@@ -62,7 +62,8 @@ public final class PictureHandler {
     }
 
     /**
-     * Determines the next picture that should be displayed
+     * Determines the next picture that should be displayed.
+     * Wraps around to the beginning of the list if picture after the last one is requested.
      * @return Picture object that should be displayed next from the ArrayList pictures
      * @throws NoPicturesLoadedException Exception for when no pictures are loaded yet but tried to access them
      */
@@ -77,7 +78,8 @@ public final class PictureHandler {
     }
 
     /**
-     * Determines the previous picture that should be displayed
+     * Determines the previous picture that should be displayed.
+     * Wraps around to the end of the list if picture before the first one is requested.
      * @return Picture object that should be displayed next from the ArrayList pictures
      * @throws NoPicturesLoadedException Exception for when no pictures are loaded yet but tried to access them
      */
@@ -88,6 +90,21 @@ public final class PictureHandler {
         else {
             currentPictureID = (currentPictureID + pictures.size() - 1) % pictures.size();
             return pictures.get(currentPictureID);
+        }
+    }
+
+    /**
+     * Method to acquire picture by the list-ID of a picture
+     * @param pictureID the ID of the Picture that is being requested
+     * @return Picture from the pictures ArrayList on position of the provided ID
+     * @throws NoPicturesLoadedException Exception for when no pictures are loaded yet but tried to access them
+     */
+    public Picture getPictureByID(int pictureID) throws NoPicturesLoadedException{
+        if(pictures.size() <= 0){
+            throw new NoPicturesLoadedException("No pictures have been loaded");
+        }
+        else {
+            return pictures.get(pictureID);
         }
     }
     //------ End Methods ------//

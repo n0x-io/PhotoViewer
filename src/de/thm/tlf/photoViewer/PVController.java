@@ -10,10 +10,12 @@ import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
@@ -23,6 +25,8 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.util.List;
 
 /**
@@ -31,11 +35,16 @@ import java.util.List;
  *
  * @author Tim Lukas Förster
  * @version 1.0
+ * repository: https://gitlab.com/n0x_io/PhotoViewer
  */
-public class Controller extends Application {
+public class PVController extends Application {
     ////////////////////////////
     //------ Attributes ------//
     ////////////////////////////
+
+    // Constants //
+    private static final String ARROWPREV = "icons/left-arrow.png";
+    private static final String ARROWNEXT = "icons/right-arrow.png";
 
     // CENTER //
     private final ScrollPane currentViewSP = new ScrollPane();
@@ -46,17 +55,18 @@ public class Controller extends Application {
     private final MenuBar menuBar = new MenuBar();
     private final Menu fileMenu = new Menu("File");
     private final Menu aboutMenu = new Menu("About");
-    private final MenuItem openFiles = new MenuItem("Open");
-    private final MenuItem clearViewer = new Menu("Close all");
-    private final MenuItem startSlideShow = new MenuItem("Start Slide Show");
-    private final MenuItem exitViewer = new Menu("Exit");
-    private final MenuItem showInfo = new Menu("Information");
+    private final MenuItem menuItemOpenFiles = new MenuItem("Open");
+    private final MenuItem menuItemClearViewer = new Menu("Close all");
+    private final MenuItem menuItemStartSlideShow = new MenuItem("Start Slide Show");
+    private final MenuItem menuItemExitViewer = new Menu("Exit");
+    private final MenuItem menuItemShowInfo = new Menu("Information");
 
     // BOTTOM //
     private final VBox bottomPanel = new VBox();
 
-    private final HBox selectionPane = new HBox();
-    private final ScrollPane pictureSelector = new ScrollPane();
+    //private final HBox selectionPane = new HBox();
+    private final ListView<ImageView> previewPane = new ListView<>();
+    private final VBox pictureSelector = new VBox();
 
     private final BorderPane bottomLowerPanel = new BorderPane();
     private final HBox bottomLeft = new HBox();
@@ -77,11 +87,13 @@ public class Controller extends Application {
     private PictureHandler picHandler;
 
     // Etc. //
+    private Thread slideShowThread;
     private boolean bIsFullScreen = false;
     private boolean bSlideShowActive = false;
     private final DoubleProperty slideShowSpeed = new SimpleDoubleProperty(4);
     private final DoubleProperty zoomProperty = new SimpleDoubleProperty(200);
 
+    // Key Combinations & Shortcuts //
     private final KeyCombination keyCrtlQ = new KeyCodeCombination(KeyCode.Q, KeyCombination.CONTROL_ANY);
     ////////////////////////////////
     //------ End Attributes ------//
@@ -116,7 +128,7 @@ public class Controller extends Application {
         // Create all Actions //
         createSliderActions();
         createMenuActions(primaryStage);
-        createButtonActions(primaryStage);
+        createClickActions(primaryStage);
 
         // Keypress Actions //
         mainScene.setOnKeyPressed(event -> {
@@ -151,12 +163,11 @@ public class Controller extends Application {
         primaryStage.show();
     }
 
-
     /**
      * Task used to run the slideshow in separate Threat.
      */
     @SuppressWarnings("rawtypes")
-    Task slideShowTask = new Task<Void>(){
+    private final Task slideShowTask = new Task<Void>(){
         @Override
         @SuppressWarnings("BusyWait")
         protected Void call() throws Exception {
@@ -179,10 +190,26 @@ public class Controller extends Application {
 
     /**
      * Event wrapper for clear function
-     * @return EventHandle executing the clear function
+     * @return EventHandle executing the clearPreviewView function
      */
     private EventHandler<ActionEvent> clearPreviewViewEvent(){
-        return e -> clearPreviewView();
+        return e -> clearViewer();
+    }
+
+    /**
+     * Event wrapper for showAboutDialog function
+     * @return EventHandle executing the showAboutDialog function
+     */
+    private EventHandler<ActionEvent> showAboutDialogEvent(){
+        return e -> showAboutDialog();
+    }
+
+    /**
+     * Event wrapper for showAboutDialog function
+     * @return EventHandle executing the showAboutDialog function
+     */
+    private EventHandler<ActionEvent> toggleSlidesHowEvent(){
+        return e -> toggleSlideShow();
     }
 
     ////////////////////////////////
@@ -192,6 +219,7 @@ public class Controller extends Application {
      * Helper method for handling sliders
      */
     private void createSliderActions() {
+        //TODO: Zoom kinda wonky... should be redone.
         // Zoom Action //
         zoomProperty.addListener(observable -> {
             centerImageView.setFitWidth(zoomProperty.get() * 4);
@@ -217,18 +245,22 @@ public class Controller extends Application {
      * @param stage the primary stage, used to display the file-open-dialog
      */
     private void createMenuActions(Stage stage) {
-        openFiles.setOnAction(openFileDialogEvent(stage));
-        exitViewer.setOnAction( e -> Platform.exit());
-        clearViewer.setOnAction(clearPreviewViewEvent());
+        menuItemOpenFiles.setOnAction(openFileDialogEvent(stage));
+        menuItemExitViewer.setOnAction(e -> Platform.exit());
+        menuItemClearViewer.setOnAction(clearPreviewViewEvent());
+        menuItemStartSlideShow.setOnAction(toggleSlidesHowEvent());
+        menuItemShowInfo.setOnAction(showAboutDialogEvent());
     }
 
     /**
      * Helper method for handling button interaction
      * @param stage the primary stage, used to display the file-open-dialog and control fullscreen functions
      */
-    private void createButtonActions(Stage stage) {
+    private void createClickActions(Stage stage) {
+        // Opens the File dialog
         openFilesButton.setOnAction(openFileDialogEvent(stage));
 
+        // Displays the previous Picture
         prevPicBtn.setOnAction(e -> {
             try{
                 centerImageView.setImage(picHandler.getPrevPicture().getImage());
@@ -236,6 +268,7 @@ public class Controller extends Application {
             catch (NoPicturesLoadedException npl){ showNoPicturesLoadedWarning();}
         });
 
+        // Displays the next picture
         nextPicBtn.setOnAction(e -> {
             try{
                 centerImageView.setImage(picHandler.getNextPicture().getImage());
@@ -243,34 +276,52 @@ public class Controller extends Application {
             catch (NoPicturesLoadedException npl){ showNoPicturesLoadedWarning();}
         });
 
+        // Sets the PictureViewer to fullscreen
         fullScreenBtn.setOnAction(e -> {
             stage.setFullScreen(!bIsFullScreen);
             bIsFullScreen ^= true;
         });
 
-        slideShowBtn.setOnAction(new EventHandler<>() {
-            Thread th;
+        //slideShowBtn.setOnAction(        });
 
-            @Override
-            public void handle(ActionEvent actionEvent) {
-                try {
-                    if (!bSlideShowActive) {
-                        // This statement is to catch any errors regarding no images loaded
-                        centerImageView.setImage(picHandler.getNextPicture().getImage());
-                        bSlideShowActive = true;
-                        slideShowBtn.setText("Stop Slide Show");
-                        th = new Thread(slideShowTask);
-                        th.start();
-                    } else {
-                        bSlideShowActive = false;
-                        slideShowBtn.setText("Slide Show");
-                        th.interrupt();
-                    }
-                } catch (NoPicturesLoadedException npl){
-                    showNoPicturesLoadedWarning();
-                }
+        // Starts the slideshow on first click, stops it on the next one
+        slideShowBtn.setOnAction(toggleSlidesHowEvent());
+
+        // Clicking on any picture in the Previews opens said picture in the main view
+        previewPane.setOnMouseClicked(e -> {
+            try {
+                centerImageView.setImage(picHandler.getPictureByID(previewPane.getSelectionModel().getSelectedIndex()).getImage());
+            } catch (NoPicturesLoadedException ignored) {
+
             }
         });
+    }
+
+    /**
+     * Method that will start and stop (toggle) the Slide show and set the corresponding texts to all buttons etc.
+     */
+    private void toggleSlideShow(){
+        try {
+            if (!bSlideShowActive) {
+                // This statement is to catch any errors regarding no images loaded
+                centerImageView.setImage(picHandler.getNextPicture().getImage());
+                bSlideShowActive = true;
+                slideShowThread = new Thread(slideShowTask);
+                slideShowThread.start();
+                // Change text of slideshow switches
+                slideShowBtn.setText("Stop Slide Show");
+                menuItemStartSlideShow.setText("Stop Slide Show");
+            } else {
+                bSlideShowActive = false;
+                // Change text of slideshow switches
+                slideShowBtn.setText("Slide Show");
+                menuItemStartSlideShow.setText("Slide Show");
+                assert slideShowThread != null;
+                    slideShowThread.interrupt();
+            }
+        } catch (NoPicturesLoadedException npl){
+            showNoPicturesLoadedWarning();
+        }
     }
 
     /**
@@ -287,7 +338,7 @@ public class Controller extends Application {
         if (selectedPictures != null) {
             try {
                 picHandler.loadPictures(selectedPictures);
-                Controller.this.updatePreviewView();
+                PVController.this.updatePreviewView();
                 centerImageView.setImage(picHandler.getNextPicture().getImage());
             } catch (NoPicturesLoadedException npl) {
                 showNoPicturesLoadedWarning();
@@ -299,24 +350,53 @@ public class Controller extends Application {
      * Method that updates the preview Pane with all PreviewPictures provided by the Picture Handler
      */
     private void updatePreviewView(){
-        clearPreviewView();
-        selectionPane.setPadding(new Insets(5,5,5,5));
+        clearViewer();
+        //previewPane.setPadding(new Insets(5,5,5,5));
         for(PicturePreview pp: picHandler.getPreviews()){
             ImageView iv = new ImageView(pp.getImage());
             iv.setFitWidth(150);
             iv.setSmooth(true);
             iv.setPreserveRatio(true);
-            selectionPane.getChildren().add(iv);
+            previewPane.getItems().add(iv);
         }
     }
 
     /**
-     * Used to clear the preview and center panel when the viewer is cleared
+     * Used to clear the preview and center panel
      */
-    private void clearPreviewView(){
-        selectionPane.getChildren().clear();
-        selectionPane.setPadding(new Insets(5,155,5,5));
+    private void clearViewer(){
+        previewPane.getItems().clear();
+        //previewPane.setPadding(new Insets(5,5,5,5));
         centerImageView.setImage(null);
+    }
+
+    /**
+     * Show a dialogue displaying copyright information about the program.
+     */
+    private void showAboutDialog(){
+        Dialog<String> aboutDialog = new Dialog<>();
+        aboutDialog.setTitle("About this program");
+        ButtonType btnType = new ButtonType("Ok", ButtonBar.ButtonData.OK_DONE);
+        aboutDialog.setContentText("""
+                Created by Tim Lukas Förster
+                Icons made by www.flaticon.com/authors/roundicons for www.flaticon.com""");
+
+
+        //Adding buttons to the aboutDialog pane
+        aboutDialog.getDialogPane().getButtonTypes().add(btnType);
+    }
+
+    /**
+     * Displays a warning dialogue informing the user that no pictures has been loaded yet
+     * and the executed action is not possible.
+     */
+    private void showNoPicturesLoadedWarning(){
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle("No pictures loaded");
+        alert.setContentText("No pictures have been loaded" +
+                "\nPlease select pictures via the menu or via the open button to view them.");
+        alert.showAndWait().ifPresent(rs -> {
+        });
     }
 
     /**
@@ -326,9 +406,9 @@ public class Controller extends Application {
     private Node createTop(){
         SeparatorMenuItem sep = new SeparatorMenuItem();
         // File Menu
-        fileMenu.getItems().addAll(openFiles, clearViewer, sep, startSlideShow, exitViewer);
+        fileMenu.getItems().addAll(menuItemOpenFiles, menuItemClearViewer, sep, menuItemStartSlideShow, menuItemExitViewer);
         // About Menu
-        aboutMenu.getItems().addAll(showInfo);
+        aboutMenu.getItems().addAll(menuItemShowInfo);
         // Menu bar
         menuBar.getMenus().addAll(fileMenu, aboutMenu);
         // Adding Menus to Top Panel
@@ -372,11 +452,31 @@ public class Controller extends Application {
         zoomSlider.setShowTickMarks(true);
         Label zoomLabel = new Label("Zoom:");
         bottomLeft.getChildren().addAll(openFilesButton, zoomLabel, zoomSlider);
-        //bottomLeft.getChildren().addAll(zoomLabel, zoomSlider);
         bottomLeft.setSpacing(5);
         bottomLowerPanel.setLeft(bottomLeft);
 
         // Middle Bottom Part
+        try {
+            // Set pictures as prev/next buttons
+            ImageView prevPic = new ImageView(new Image(new FileInputStream(ARROWPREV)));
+            prevPic.setFitHeight(10);
+            prevPic.setPreserveRatio(true);
+            prevPicBtn.setText(null);
+            prevPicBtn.setGraphic(prevPic);
+
+            ImageView nextPic = new ImageView(new Image(new FileInputStream(ARROWNEXT)));
+            nextPic.setFitHeight(10);
+            nextPic.setPreserveRatio(true);
+            nextPicBtn.setText(null);
+            nextPicBtn.setGraphic(nextPic);
+        } catch (FileNotFoundException ignored){
+            // fallback to text
+            prevPicBtn.setGraphic(null);
+            nextPicBtn.setGraphic(null);
+
+            prevPicBtn.setText("<-");
+            nextPicBtn.setText("->");
+        }
         bottomMid.setAlignment(Pos.CENTER);
         bottomMid.setSpacing(5);
         bottomMid.getChildren().addAll(prevPicBtn, slideShowBtn, nextPicBtn);
@@ -391,27 +491,15 @@ public class Controller extends Application {
         bottomLowerPanel.setRight(bottomRight);
 
         // Bottom upper Part -> Picture preview
-        selectionPane.setPadding(new Insets(5,5,155,5));
-        selectionPane.autosize();
-        selectionPane.setSpacing(5);
-        pictureSelector.setContent(selectionPane);
+        pictureSelector.setPadding(new Insets(2,2,2,2));
+        previewPane.setOrientation(Orientation.HORIZONTAL);
+        previewPane.setMaxHeight(150);
+        //selectionPane.setSpacing(5);
+        pictureSelector.getChildren().add(previewPane);
 
         bottomPanel.getChildren().addAll(pictureSelector, bottomLowerPanel);
 
         return (bottomPanel);
-    }
-
-    /**
-     * Displays a warning dialogue informing the user that no pictures has been loaded yet
-     * and the executed action is not possible.
-     */
-    private void showNoPicturesLoadedWarning(){
-        Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle("No pictures loaded");
-        alert.setContentText("No pictures have been loaded" +
-                "\nPlease select pictures via the menu or via the open button to view them.");
-        alert.showAndWait().ifPresent(rs -> {
-        });
     }
     ////////////////////////////////////
     //------ End Helper-Methods ------//
